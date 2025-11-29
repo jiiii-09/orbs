@@ -1,46 +1,14 @@
-let fft;
 let vol = 0;
 let smoothVol = 0;
 
 let particles = [];
 
-// NASA Thermal Palette Colors
+// NASA Thermal Palette
 let c1, c2, c3, c4;
 
 let audioContext;
 let analyser;
 let dataArray;
-let meetAudio;
-
-// -------------------------------------------
-// 🎧 Google Meet 오디오를 자동으로 탐지하는 함수
-// -------------------------------------------
-function findMeetAudio() {
-  let els = document.querySelectorAll("audio, video");
-
-  els.forEach(el => {
-    // Google Meet의 remote audio는 srcObject가 반드시 있음
-    if (el.srcObject) {
-      console.log("✅ Meet 오디오 요소 발견:", el);
-      meetAudio = el;
-
-      audioContext = new AudioContext();
-      let source = audioContext.createMediaElementSource(meetAudio);
-
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 1024;
-      dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
-    }
-  });
-
-  if (!meetAudio) {
-    console.log("🔍 Meet 오디오 탐색 중...");
-    setTimeout(findMeetAudio, 1500);
-  }
-}
 
 // ------------------------------------------------------
 // SETUP
@@ -52,16 +20,39 @@ function setup() {
   textAlign(CENTER, CENTER);
   textSize(28);
   fill(120);
-  text("Google Meet 오디오 연결 중…", width / 2, height / 2);
+  text("화면을 터치해서 시작하세요 🎤", width / 2, height / 2);
 
   // NASA thermal palette
   c1 = color('#1B0050');
   c2 = color('#7A1C8A');
   c3 = color('#FF6B1A');
   c4 = color('#FFFFFF');
+}
 
-  // Meet 오디오 스캔 시작
-  setTimeout(findMeetAudio, 2000);
+// ------------------------------------------------------
+// 🔥 탭 오디오 캡처 시작
+// ------------------------------------------------------
+async function mousePressed() {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: false
+    });
+
+    audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 1024;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    source.connect(analyser);
+
+    console.log("🎉 탭 오디오 연결 완료!");
+
+  } catch (err) {
+    console.error("오디오 캡처 실패:", err);
+  }
 }
 
 // ------------------------------------------------------
@@ -73,7 +64,7 @@ function draw() {
   if (analyser) {
     analyser.getByteTimeDomainData(dataArray);
 
-    // 0~255 → 0~1 볼륨으로 변환
+    // 0~255 → 0~1
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
       sum += Math.abs(dataArray[i] - 128);
@@ -87,6 +78,7 @@ function draw() {
       createParticles(int(energy * 0.5));
     }
 
+    // update + display
     for (let i = particles.length - 1; i >= 0; i--) {
       particles[i].update();
       particles[i].display();
@@ -96,7 +88,7 @@ function draw() {
 }
 
 // -------------------------------------------------
-// 🔥 Main Particles + Shards
+// 🌋 PARTICLE SYSTEM (지원님 코드 그대로 유지)
 // -------------------------------------------------
 function createParticles(count) {
   count = constrain(count, 3, 10);
@@ -125,8 +117,6 @@ function createShards(x, y, parentSize) {
 }
 
 // -------------------------------------------------
-// 🎇 NASA Thermal Color Mapping
-// -------------------------------------------------
 function thermalColor(t) {
   if (t < 0.33) {
     return lerpColor(c1, c2, t / 0.33);
@@ -137,8 +127,6 @@ function thermalColor(t) {
   }
 }
 
-// -------------------------------------------------
-// ⭐ Big Particle
 // -------------------------------------------------
 class Particle {
   constructor(x, y) {
@@ -173,8 +161,6 @@ class Particle {
 }
 
 // -------------------------------------------------
-// ⭐ Medium Shard Particles
-// -------------------------------------------------
 class ShardParticle {
   constructor(x, y, parentSize) {
     this.pos = createVector(
@@ -208,8 +194,6 @@ class ShardParticle {
 }
 
 // -------------------------------------------------
-// ⭐ VERY MINI Dust Particles
-// -------------------------------------------------
 class MiniParticle {
   constructor(x, y, parentSize) {
     this.pos = createVector(
@@ -242,6 +226,7 @@ class MiniParticle {
   }
 }
 
+// -------------------------------------------------
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   background('#000000');
